@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Username Splitter</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #0f172a; color: #e2e8f0; }
+    main { width: min(1050px, calc(100% - 32px)); margin: 48px auto; }
+    h1 { margin: 0 0 8px; font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -.04em; }
+    .intro { margin: 0 0 28px; color: #94a3b8; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .panel { padding: 20px; border: 1px solid #334155; border-radius: 18px; background: #172033; }
+    label { display: block; margin-bottom: 10px; font-size: .9rem; font-weight: 700; color: #cbd5e1; }
+    textarea { display: block; width: 100%; min-height: 360px; padding: 14px; resize: vertical; border: 1px solid #475569; border-radius: 12px; background: #0b1220; color: #f8fafc; font: 14px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; outline: none; }
+    textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 3px #6366f133; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    button { border: 0; border-radius: 10px; padding: 11px 16px; cursor: pointer; font: inherit; font-weight: 700; color: #fff; background: #4f46e5; }
+    button:hover { background: #6366f1; }
+    button.secondary { background: #334155; }
+    button.secondary:hover { background: #475569; }
+    .meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; color: #94a3b8; font-size: .85rem; }
+    .hint { margin: 12px 0 0; color: #64748b; font-size: .82rem; }
+    @media (max-width: 760px) { main { margin: 24px auto; } .grid { grid-template-columns: 1fr; } textarea { min-height: 240px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Username Splitter</h1>
+    <p class="intro">Paste data username TikTok kamu. Hasilnya otomatis jadi satu username per baris.</p>
+
+    <section class="grid">
+      <div class="panel">
+        <label for="input">Data mentah</label>
+        <textarea id="input" spellcheck="false" placeholder="Paste 7.000 username di sini..."></textarea>
+        <div class="actions">
+          <button id="convert">Pisahkan username</button>
+          <button id="clear" class="secondary">Bersihkan</button>
+        </div>
+        <p class="hint">Pemisah spasi, tab, dan baris baru otomatis didukung. Maksimal 10.000 username.</p>
+      </div>
+
+      <div class="panel">
+        <label for="output">Hasil</label>
+        <textarea id="output" readonly spellcheck="false" placeholder="Hasil akan muncul di sini..."></textarea>
+        <div class="meta"><span id="count">0 username</span><span id="status"></span></div>
+        <div class="actions">
+          <button id="copy">Salin hasil</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const input = document.querySelector('#input');
+    const output = document.querySelector('#output');
+    const count = document.querySelector('#count');
+    const status = document.querySelector('#status');
+    const MAX_USERNAMES = 10000;
+
+    function splitUsernames(raw) {
+      return raw
+        .replace(/&#x20;|&#32;|&nbsp;/gi, ' ')
+        .split(/\s+/)
+        .map(value => value.replace(/^@/, '').trim())
+        .filter(Boolean);
+    }
+
+    function convert() {
+      const allUsernames = splitUsernames(input.value);
+      const usernames = allUsernames.slice(0, MAX_USERNAMES);
+      output.value = usernames.join('\n');
+      count.textContent = `${usernames.length.toLocaleString('id-ID')} username`;
+      status.textContent = allUsernames.length > MAX_USERNAMES
+        ? `Dibatasi ${MAX_USERNAMES.toLocaleString('id-ID')} username`
+        : (usernames.length ? 'Siap disalin' : '');
+    }
+
+    document.querySelector('#convert').addEventListener('click', convert);
+    document.querySelector('#clear').addEventListener('click', () => {
+      input.value = '';
+      output.value = '';
+      count.textContent = '0 username';
+      status.textContent = '';
+      input.focus();
+    });
+    document.querySelector('#copy').addEventListener('click', async () => {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+      } catch {
+        output.focus();
+        output.select();
+        document.execCommand('copy');
+      }
+      status.textContent = 'Tersalin ✓';
+    });
+    input.addEventListener('paste', () => setTimeout(convert, 0));
+  </script>
+</body>
+</html>
