@@ -12,6 +12,7 @@
     h1 { margin: 0 0 8px; font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -.04em; }
     .intro { margin: 0 0 28px; color: #94a3b8; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .email-section { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
     .panel { padding: 20px; border: 1px solid #334155; border-radius: 18px; background: #172033; }
     label { display: block; margin-bottom: 10px; font-size: .9rem; font-weight: 700; color: #cbd5e1; }
     textarea { display: block; width: 100%; min-height: 360px; padding: 14px; resize: vertical; border: 1px solid #475569; border-radius: 12px; background: #0b1220; color: #f8fafc; font: 14px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; outline: none; }
@@ -23,13 +24,13 @@
     button.secondary:hover { background: #475569; }
     .meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; color: #94a3b8; font-size: .85rem; }
     .hint { margin: 12px 0 0; color: #64748b; font-size: .82rem; }
-    @media (max-width: 760px) { main { margin: 24px auto; } .grid { grid-template-columns: 1fr; } textarea { min-height: 240px; } }
+    @media (max-width: 760px) { main { margin: 24px auto; } .grid, .email-section { grid-template-columns: 1fr; } textarea { min-height: 240px; } }
   </style>
 </head>
 <body>
   <main>
     <h1>Username Splitter</h1>
-    <p class="intro">Paste data username TikTok kamu. Hasilnya otomatis jadi satu username per baris.</p>
+    <p class="intro">Pisahkan username TikTok atau ambil email provider umum dari data campuran. Semua diproses langsung di browser tanpa database.</p>
 
     <section class="grid">
       <div class="panel">
@@ -51,6 +52,27 @@
         </div>
       </div>
     </section>
+
+    <section class="email-section">
+      <div class="panel">
+        <label for="email-input">Email filter — data campuran</label>
+        <textarea id="email-input" spellcheck="false" placeholder="Paste username dan email di sini..."></textarea>
+        <div class="actions">
+          <button id="filter-emails">Ambil email umum</button>
+          <button id="clear-emails" class="secondary">Bersihkan</button>
+        </div>
+        <p class="hint">Hanya email Gmail, Yahoo, iCloud, Outlook, Hotmail, dan provider umum lain yang dipertahankan. Domain custom dikecualikan.</p>
+      </div>
+
+      <div class="panel">
+        <label for="email-output">Hasil email umum</label>
+        <textarea id="email-output" readonly spellcheck="false" placeholder="Email provider umum akan muncul di sini..."></textarea>
+        <div class="meta"><span id="email-count">0 email</span><span id="email-status"></span></div>
+        <div class="actions">
+          <button id="copy-emails">Salin hasil email</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -59,6 +81,17 @@
     const count = document.querySelector('#count');
     const status = document.querySelector('#status');
     const MAX_USERNAMES = 10000;
+    const MAX_EMAILS = 10000;
+    const emailInput = document.querySelector('#email-input');
+    const emailOutput = document.querySelector('#email-output');
+    const emailCount = document.querySelector('#email-count');
+    const emailStatus = document.querySelector('#email-status');
+    const COMMON_EMAIL_DOMAINS = new Set([
+      'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk', 'ymail.com',
+      'icloud.com', 'me.com', 'mac.com', 'outlook.com', 'hotmail.com', 'live.com',
+      'msn.com', 'aol.com', 'proton.me', 'protonmail.com', 'yandex.com',
+      'mail.com', 'gmx.com', 'zoho.com'
+    ]);
 
     function splitUsernames(raw) {
       return raw
@@ -98,6 +131,42 @@
       status.textContent = 'Tersalin ✓';
     });
     input.addEventListener('paste', () => setTimeout(convert, 0));
+
+    function getCustomEmails(raw) {
+      const emails = raw.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
+      return emails.filter(email => COMMON_EMAIL_DOMAINS.has(email.split('@').pop().toLowerCase()));
+    }
+
+    function filterEmails() {
+      const allEmails = getCustomEmails(emailInput.value);
+      const emails = allEmails.slice(0, MAX_EMAILS);
+      emailOutput.value = emails.join('\n');
+      emailCount.textContent = `${emails.length.toLocaleString('id-ID')} email`;
+      emailStatus.textContent = allEmails.length > MAX_EMAILS
+        ? `Dibatasi ${MAX_EMAILS.toLocaleString('id-ID')} email`
+        : (emails.length ? 'Siap disalin' : '');
+    }
+
+    document.querySelector('#filter-emails').addEventListener('click', filterEmails);
+    document.querySelector('#clear-emails').addEventListener('click', () => {
+      emailInput.value = '';
+      emailOutput.value = '';
+      emailCount.textContent = '0 email';
+      emailStatus.textContent = '';
+      emailInput.focus();
+    });
+    document.querySelector('#copy-emails').addEventListener('click', async () => {
+      if (!emailOutput.value) return;
+      try {
+        await navigator.clipboard.writeText(emailOutput.value);
+      } catch {
+        emailOutput.focus();
+        emailOutput.select();
+        document.execCommand('copy');
+      }
+      emailStatus.textContent = 'Tersalin ✓';
+    });
+    emailInput.addEventListener('paste', () => setTimeout(filterEmails, 0));
   </script>
 </body>
 </html>
