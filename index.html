@@ -98,7 +98,7 @@
             <div class="actions">
               <button id="toggle-discarded" class="secondary" hidden>Lihat semua</button>
             </div>
-            <p class="hint">Contoh yang ditampilkan hanya 5 hasil pertama. Hasil buangan tetap tidak masuk ke tombol salin utama.</p>
+            <p class="hint">Buangan = username tanpa email atau email domain custom. Hanya 5 contoh ditampilkan; sisanya bisa dibuka dengan tombol di atas.</p>
           </div>
         </section>
       </div>
@@ -182,25 +182,29 @@
 
       const kept = [];
       const discarded = [];
-      let previousUsername = '';
+      let pendingUsername = '';
       raw.split(/\r?\n/).forEach(line => {
+        line = line.trim();
+        if (!line) return;
         const lineEmails = line.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
         const tokensBeforeEmail = line.split(/\s+/).filter(Boolean);
         if (!lineEmails.length) {
-          previousUsername = tokensBeforeEmail.at(-1)?.replace(/^@/, '') || '';
+          if (pendingUsername) discarded.push(pendingUsername);
+          pendingUsername = tokensBeforeEmail.at(-1)?.replace(/^@/, '') || '';
           return;
         }
 
+        const usernameFromPreviousLine = pendingUsername;
         lineEmails.forEach(email => {
-          if (!COMMON_EMAIL_DOMAINS.has(email.split('@').pop().toLowerCase())) return;
           const emailIndex = line.indexOf(email);
           const prefix = line.slice(0, emailIndex).trim().split(/\s+/).filter(Boolean);
-          const username = prefix.at(-1)?.replace(/^@/, '') || previousUsername;
+          const username = prefix.at(-1)?.replace(/^@/, '') || usernameFromPreviousLine;
           const row = username && !username.includes('@') ? `${username}\t${email}` : `\t${email}`;
           (COMMON_EMAIL_DOMAINS.has(email.split('@').pop().toLowerCase()) ? kept : discarded).push(row);
         });
-        previousUsername = '';
+        pendingUsername = '';
       });
+      if (pendingUsername) discarded.push(pendingUsername);
       return { kept, discarded };
     }
 
