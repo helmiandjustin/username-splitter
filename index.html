@@ -77,12 +77,12 @@
                 <button id="filter-emails">Ambil email umum</button>
                 <button id="clear-emails" class="secondary">Bersihkan</button>
               </div>
-              <p class="hint">Hanya provider umum yang dipertahankan. Jika username ada di baris yang sama, hasilnya ikut disertakan.</p>
+              <p class="hint">Hanya provider umum yang dipertahankan. Hasil memakai TAB agar langsung terpisah menjadi 2 kolom saat ditempel ke Excel.</p>
             </div>
 
             <div class="panel">
               <label for="email-output">Hasil username + email</label>
-              <textarea id="email-output" readonly spellcheck="false" placeholder="username email akan muncul di sini..."></textarea>
+              <textarea id="email-output" readonly spellcheck="false" placeholder="username dan email akan muncul di sini..."></textarea>
               <div class="meta"><span id="email-count">0 hasil</span><span id="email-status"></span></div>
               <div class="actions">
                 <button id="copy-emails">Salin hasil</button>
@@ -179,7 +179,7 @@
           const emailIndex = line.indexOf(email);
           const prefix = line.slice(0, emailIndex).trim().split(/\s+/).filter(Boolean);
           const username = prefix.at(-1)?.replace(/^@/, '') || previousUsername;
-          rows.push(username && !username.includes('@') ? `${username} ${email}` : email);
+          rows.push(username && !username.includes('@') ? `${username}\t${email}` : `\t${email}`);
         });
         previousUsername = '';
       });
@@ -189,7 +189,7 @@
     function filterEmails() {
       const allEmails = getCommonEmailRows(emailInput.value);
       const emails = allEmails.slice(0, MAX_EMAILS);
-      emailOutput.value = emails.join('\n');
+      emailOutput.value = emails.length ? ['username\temail', ...emails].join('\n') : '';
       emailCount.textContent = `${emails.length.toLocaleString('id-ID')} email`;
       emailStatus.textContent = allEmails.length > MAX_EMAILS
         ? `Dibatasi ${MAX_EMAILS.toLocaleString('id-ID')} email`
