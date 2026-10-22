@@ -13,6 +13,8 @@
     .intro { margin: 0 0 28px; color: #94a3b8; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     .email-section { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+    .discarded-panel { margin-top: 18px; }
+    .discarded-panel textarea { min-height: 150px; }
     .app-layout { display: grid; grid-template-columns: 210px 1fr; gap: 18px; align-items: start; }
     .sidebar { display: grid; gap: 8px; padding: 10px; border: 1px solid #334155; border-radius: 16px; background: #172033; }
     .nav-button { width: 100%; text-align: left; background: transparent; color: #94a3b8; }
@@ -89,6 +91,15 @@
               </div>
             </div>
           </div>
+          <div class="panel discarded-panel">
+            <label for="discarded-output">Hasil yang dibuang</label>
+            <textarea id="discarded-output" readonly spellcheck="false" placeholder="Belum ada email yang dibuang..."></textarea>
+            <div class="meta"><span id="discarded-count">0 dibuang</span><span id="discarded-status"></span></div>
+            <div class="actions">
+              <button id="toggle-discarded" class="secondary" hidden>Lihat semua</button>
+            </div>
+            <p class="hint">Contoh yang ditampilkan hanya 5 hasil pertama. Hasil buangan tetap tidak masuk ke tombol salin utama.</p>
+          </div>
         </section>
       </div>
     </div>
@@ -105,6 +116,11 @@
     const emailOutput = document.querySelector('#email-output');
     const emailCount = document.querySelector('#email-count');
     const emailStatus = document.querySelector('#email-status');
+    const discardedOutput = document.querySelector('#discarded-output');
+    const discardedCount = document.querySelector('#discarded-count');
+    const discardedStatus = document.querySelector('#discarded-status');
+    const toggleDiscarded = document.querySelector('#toggle-discarded');
+    let showAllDiscarded = false;
     const COMMON_EMAIL_DOMAINS = new Set([
       'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk', 'ymail.com',
       'icloud.com', 'me.com', 'mac.com', 'outlook.com', 'hotmail.com', 'live.com',
@@ -160,11 +176,12 @@
     });
     input.addEventListener('paste', () => setTimeout(convert, 0));
 
-    function getCommonEmailRows(raw) {
+    function getEmailRows(raw) {
       const emails = raw.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
-      if (!emails.length) return [];
+      if (!emails.length) return { kept: [], discarded: [] };
 
-      const rows = [];
+      const kept = [];
+      const discarded = [];
       let previousUsername = '';
       raw.split(/\r?\n/).forEach(line => {
         const lineEmails = line.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
@@ -179,21 +196,32 @@
           const emailIndex = line.indexOf(email);
           const prefix = line.slice(0, emailIndex).trim().split(/\s+/).filter(Boolean);
           const username = prefix.at(-1)?.replace(/^@/, '') || previousUsername;
-          rows.push(username && !username.includes('@') ? `${username}\t${email}` : `\t${email}`);
+          const row = username && !username.includes('@') ? `${username}\t${email}` : `\t${email}`;
+          (COMMON_EMAIL_DOMAINS.has(email.split('@').pop().toLowerCase()) ? kept : discarded).push(row);
         });
         previousUsername = '';
       });
-      return rows;
+      return { kept, discarded };
     }
 
     function filterEmails() {
-      const allEmails = getCommonEmailRows(emailInput.value);
+      const { kept: allEmails, discarded } = getEmailRows(emailInput.value);
       const emails = allEmails.slice(0, MAX_EMAILS);
       emailOutput.value = emails.length ? ['username\temail', ...emails].join('\n') : '';
       emailCount.textContent = `${emails.length.toLocaleString('id-ID')} email`;
       emailStatus.textContent = allEmails.length > MAX_EMAILS
         ? `Dibatasi ${MAX_EMAILS.toLocaleString('id-ID')} email`
         : (emails.length ? 'Siap disalin' : '');
+      renderDiscarded(discarded);
+    }
+
+    function renderDiscarded(discarded) {
+      const visible = showAllDiscarded ? discarded : discarded.slice(0, 5);
+      discardedOutput.value = visible.join('\n');
+      discardedCount.textContent = `${discarded.length.toLocaleString('id-ID')} dibuang`;
+      discardedStatus.textContent = discarded.length ? 'Tidak masuk hasil utama' : '';
+      toggleDiscarded.hidden = discarded.length <= 5;
+      toggleDiscarded.textContent = showAllDiscarded ? 'Tampilkan 5 saja' : `Lihat semua (${discarded.length.toLocaleString('id-ID')})`;
     }
 
     document.querySelector('#filter-emails').addEventListener('click', filterEmails);
@@ -202,7 +230,16 @@
       emailOutput.value = '';
       emailCount.textContent = '0 email';
       emailStatus.textContent = '';
+      discardedOutput.value = '';
+      discardedCount.textContent = '0 dibuang';
+      discardedStatus.textContent = '';
+      showAllDiscarded = false;
+      toggleDiscarded.hidden = true;
       emailInput.focus();
+    });
+    toggleDiscarded.addEventListener('click', () => {
+      showAllDiscarded = !showAllDiscarded;
+      renderDiscarded(getEmailRows(emailInput.value).discarded);
     });
     document.querySelector('#copy-emails').addEventListener('click', async () => {
       if (!emailOutput.value) return;
